@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch'; // برای دانلود ویدیو
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
-import fileType from 'file-type'; // به جای { fromBuffer }
+import * as fileType from 'file-type'; // به جای import { fromBuffer } از import * استفاده کنید
 import { promises as fs } from 'fs'; // استفاده از promises برای استفاده از async/await
 import path from 'path';
 
