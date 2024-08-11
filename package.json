@@ -1,13 +1,18 @@
 {
-  "name": "video-api",
+  "name": "video-processor",
   "version": "1.0.0",
+  "description": "API for processing videos with ffmpeg",
   "main": "index.js",
+  "dependencies": {
+    "@ffmpeg/core": "^0.11.0",
+    "@ffmpeg/ffmpeg": "^0.11.6",
+    "express": "^4.17.1",
+    "file-type": "^17.1.2",
+    "node-fetch": "^2.6.1"
+  },
   "scripts": {
     "start": "node index.js"
   },
-  "dependencies": {
-    "express": "^4.17.1",
-    "axios": "^0.21.1",
-    "fluent-ffmpeg": "^2.1.2"
-  }
+  "author": "",
+  "license": "ISC"
 }
