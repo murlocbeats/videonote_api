@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch'; // برای دانلود ویدیو
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
-import fileType from 'file-type';
+import { fromBuffer } from 'file-type';
 import { promises as fs } from 'fs'; // استفاده از promises برای استفاده از async/await
 import path from 'path';
 
@@ -20,7 +20,7 @@ app.get('/process-video', async (req, res) => {
         const buffer = await response.buffer();
 
         // بررسی نوع فایل
-        const type = await fileType.fromBuffer(buffer);
+        const type = await fromBuffer(buffer);
         if (!type || type.mime !== 'video/mp4') {
             return res.status(400).send('Only MP4 videos are supported');
         }
