@@ -19,11 +19,14 @@ app.get('/process-video', async (req, res) => {
         const videoPath = path.resolve(__dirname, 'input.mp4');
         const outputPath = path.resolve(__dirname, 'output.mp4');
 
-        // دانلود ویدیو
+        // دانلود ویدیو با مدیریت خطاها
         const response = await axios({
             method: 'GET',
             url: videoUrl,
             responseType: 'stream',
+            validateStatus: function (status) {
+                return status >= 200 && status < 400; // موفقیت‌آمیز بودن درخواست
+            }
         });
 
         // ذخیره ویدیو در فایل input.mp4
@@ -66,6 +69,7 @@ app.get('/process-video', async (req, res) => {
         res.status(500).send('Error processing request');
     }
 });
+
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
