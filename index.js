@@ -1,13 +1,13 @@
 const express = require('express');
-const ffmpeg = require('fluent-ffmpeg');
-const axios = require('axios');
+const fetch = require('node-fetch'); // برای دانلود ویدیو
 const fs = require('fs');
+const { createFFmpeg, fetchFile } = require('@ffmpeg/ffmpeg');
+const fileType = require('file-type');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const ffmpeg = createFFmpeg({ log: true });
 
-// Endpoint برای پردازش ویدیو
 app.get('/process-video', async (req, res) => {
     const videoUrl = req.query.url;
 
@@ -16,61 +16,53 @@ app.get('/process-video', async (req, res) => {
     }
 
     try {
-        const videoPath = path.resolve(__dirname, 'input.mp4');
-        const outputPath = path.resolve(__dirname, 'output.mp4');
+        const response = await fetch(videoUrl);
+        const buffer = await response.buffer();
 
-        // دانلود ویدیو با مدیریت خطاها
-        const response = await axios({
-            method: 'GET',
-            url: videoUrl,
-            responseType: 'stream',
-            validateStatus: function (status) {
-                return status >= 200 && status < 400; // موفقیت‌آمیز بودن درخواست
-            }
-        });
+        // بررسی نوع فایل
+        const type = await fileType.fromBuffer(buffer);
+        if (!type || type.mime !== 'video/mp4') {
+            return res.status(400).send('Only MP4 videos are supported');
+        }
 
-        // ذخیره ویدیو در فایل input.mp4
-        const writer = fs.createWriteStream(videoPath);
-        response.data.pipe(writer);
+        const inputPath = 'input.mp4';
+        const outputPath = 'output.mp4';
 
-        writer.on('finish', () => {
-            // پردازش ویدیو با استفاده از FFmpeg
-            ffmpeg(videoPath)
-                .setStartTime('00:00:00')
-                .setDuration(10)
-                .size('360x360')
-                .output(outputPath)
-                .on('end', () => {
-                    // ارسال ویدیو پردازش‌شده به کاربر
-                    res.download(outputPath, 'output.mp4', (err) => {
-                        if (err) {
-                            console.error(err);
-                        }
+        if (!ffmpeg.isLoaded()) {
+            await ffmpeg.load();
+        }
 
-                        // حذف فایل‌های موقت
-                        fs.unlinkSync(videoPath);
-                        fs.unlinkSync(outputPath);
-                    });
-                })
-                .on('error', (err) => {
-                    console.error(err);
-                    res.status(500).send('Error processing video');
-                })
-                .run();
-        });
+        // فایل ورودی را در سیستم فایل مجازی ffmpeg کپی می‌کنیم
+        ffmpeg.FS('writeFile', inputPath, await fetchFile(buffer));
 
-        writer.on('error', (err) => {
-            console.error(err);
-            res.status(500).send('Error downloading video');
-        });
+        // اجرای فرمان‌های ffmpeg برای پردازش ویدیو
+        await ffmpeg.run(
+            '-i', inputPath,
+            '-ss', '00:00:00',
+            '-t', '10',
+            '-vf', 'scale=360:360',
+            outputPath
+        );
+
+        // دریافت ویدیو خروجی از سیستم فایل مجازی ffmpeg
+        const data = ffmpeg.FS('readFile', outputPath);
+
+        // ارسال ویدیو به صورت فایل دانلود
+        res.setHeader('Content-Type', 'video/mp4');
+        res.setHeader('Content-Disposition', 'attachment; filename="output.mp4"');
+        res.send(Buffer.from(data));
+
+        // حذف فایل‌های موقت از سیستم فایل مجازی ffmpeg
+        ffmpeg.FS('unlink', inputPath);
+        ffmpeg.FS('unlink', outputPath);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Error processing request');
+        console.error('Error processing video:', error);
+        res.status(500).send('Error processing video');
     }
 });
 
-
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
