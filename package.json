@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "API for processing videos with ffmpeg",
   "main": "index.js",
+  "type": "module",
   "dependencies": {
     "@ffmpeg/core": "^0.11.0",
     "@ffmpeg/ffmpeg": "^0.11.6",
