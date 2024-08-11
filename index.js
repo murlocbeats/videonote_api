@@ -1,9 +1,7 @@
 import express from 'express';
-import fetch from 'node-fetch'; // برای دانلود ویدیو
+import fetch from 'node-fetch';
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
-import * as fileType from 'file-type'; // به جای import { fromBuffer } از import * استفاده کنید
-import { promises as fs } from 'fs'; // استفاده از promises برای استفاده از async/await
-import path from 'path';
+import fileType from 'file-type'; // وارد کردن به‌طور صحیح
 
 const app = express();
 const ffmpeg = createFFmpeg({ log: true });
@@ -16,26 +14,31 @@ app.get('/process-video', async (req, res) => {
     }
 
     try {
+        console.log('Fetching video from URL:', videoUrl);
         const response = await fetch(videoUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch video: ${response.statusText}`);
+        }
         const buffer = await response.buffer();
 
-        // بررسی نوع فایل
-        const type = await fileType.fromBuffer(buffer);
+        console.log('Detecting file type');
+        const type = await fileType.buffer(buffer); // تغییر به .buffer
         if (!type || type.mime !== 'video/mp4') {
             return res.status(400).send('Only MP4 videos are supported');
+        }
+
+        console.log('Loading ffmpeg');
+        if (!ffmpeg.isLoaded()) {
+            await ffmpeg.load();
         }
 
         const inputPath = 'input.mp4';
         const outputPath = 'output.mp4';
 
-        if (!ffmpeg.isLoaded()) {
-            await ffmpeg.load();
-        }
-
-        // فایل ورودی را در سیستم فایل مجازی ffmpeg کپی می‌کنیم
+        console.log('Writing file to ffmpeg virtual file system');
         ffmpeg.FS('writeFile', inputPath, await fetchFile(buffer));
 
-        // اجرای فرمان‌های ffmpeg برای پردازش ویدیو
+        console.log('Running ffmpeg command');
         await ffmpeg.run(
             '-i', inputPath,
             '-ss', '00:00:00',
@@ -44,20 +47,20 @@ app.get('/process-video', async (req, res) => {
             outputPath
         );
 
-        // دریافت ویدیو خروجی از سیستم فایل مجازی ffmpeg
+        console.log('Reading output file from ffmpeg virtual file system');
         const data = ffmpeg.FS('readFile', outputPath);
 
-        // ارسال ویدیو به صورت فایل دانلود
+        console.log('Sending output file');
         res.setHeader('Content-Type', 'video/mp4');
         res.setHeader('Content-Disposition', 'attachment; filename="output.mp4"');
         res.send(Buffer.from(data));
 
-        // حذف فایل‌های موقت از سیستم فایل مجازی ffmpeg
+        console.log('Cleaning up temporary files');
         ffmpeg.FS('unlink', inputPath);
         ffmpeg.FS('unlink', outputPath);
 
     } catch (error) {
-        console.error('Error processing video:', error);
+        console.error('Error processing video:', error.message);
         res.status(500).send('Error processing video');
     }
 });
