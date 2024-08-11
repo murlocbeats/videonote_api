@@ -1,9 +1,9 @@
-const express = require('express');
-const fetch = require('node-fetch'); // برای دانلود ویدیو
-const fs = require('fs');
-const { createFFmpeg, fetchFile } = require('@ffmpeg/ffmpeg');
-const fileType = require('file-type');
-const path = require('path');
+import express from 'express';
+import fetch from 'node-fetch'; // برای دانلود ویدیو
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+import fileType from 'file-type';
+import { promises as fs } from 'fs'; // استفاده از promises برای استفاده از async/await
+import path from 'path';
 
 const app = express();
 const ffmpeg = createFFmpeg({ log: true });
